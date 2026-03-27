@@ -172,30 +172,31 @@ async function cloneRoles(source, target) {
         await delay(CONFIG.delays.role);
     }
     roleBar.stop();
+
+    // Set positions to match source order
+    log('Setting role positions...', 'progress');
+    const posBar = createProgressBar('Setting Positions');
+    posBar.start(roles.length, 0);
+    for (const role of roles) {
+        const targetRoleId = roleMap.get(role.id);
+        if (targetRoleId) {
+            try {
+                const targetRole = target.roles.get(targetRoleId);
+                await targetRole.setPosition(role.position);
+            } catch (e) {
+                log(`Failed to set position for ${role.name}`, 'warning');
+            }
+        }
+        posBar.increment();
+        await delay(200);
+    }
+    posBar.stop();
     console.log('');
     
     return roleMap;
 }
 
-async function cloneEmojis(source, target) {
-    const emojis = source.emojis.array();
-    
-    if (emojis.length === 0) return;
-    
-    log(`Cloning ${colors.yellow(emojis.length)} emojis...`, 'progress');
-    const emojiBar = createProgressBar('Creating Emojis  ');
-    emojiBar.start(emojis.length, 0);
-    
-    for (const emoji of emojis) {
-        try {
-            await target.createEmoji(emoji.url, emoji.name);
-        } catch (e) {}
-        emojiBar.increment();
-        await delay(CONFIG.delays.emoji);
-    }
-    emojiBar.stop();
-    console.log('');
-}
+
 
 function mapPermissions(overwrites, source, target, roleMap) {
     return overwrites.map(overwrite => {
@@ -351,7 +352,6 @@ async function cloneServer(source, target, options) {
     console.log('');
     
     const roleMap = await cloneRoles(source, target);
-    await cloneEmojis(source, target);
     await cloneChannels(source, target, roleMap);
     
     const duration = ((Date.now() - startTime) / 1000).toFixed(2);
@@ -363,11 +363,10 @@ async function cloneServer(source, target, options) {
     
     const stats = {
         roles: source.roles.size - 1,
-        channels: source.channels.size,
-        emojis: source.emojis.size
+        channels: source.channels.size
     };
     
-    console.log(`   ${colors.gray('Stats:')} ${colors.cyan(stats.roles)} roles | ${colors.cyan(stats.channels)} channels | ${colors.cyan(stats.emojis)} emojis`);
+    console.log(`   ${colors.gray('Stats:')} ${colors.cyan(stats.roles)} roles | ${colors.cyan(stats.channels)} channels`);
     console.log('');
     console.log(colors.magenta('━'.repeat(70)));
     console.log(`   ${colors.magenta('Thank you for using ApeX Cloner!')} ${colors.gray('- Subscribe to ApeX Development on YouTube')}`);
